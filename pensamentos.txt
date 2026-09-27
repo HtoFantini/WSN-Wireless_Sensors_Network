@@ -1,0 +1,136 @@
+Estou fazendo primeiro de forma simplificada, em que a cada correcao, o sensor faz um novo escaneamento dos vizihnos
+a fim de verificar se existem novos ou se algum vizinho foi excluido. Contudo, isso é EXTREMAMENTE ineficiente e fere
+alguns requisitos do documento
+
+● O servidor será responsável por manter o registro de todos os sensores
+conectados, incluindo suas coordenadas e tipo.
+●​ Os sensores devem manter a lista dos vizinhos mais próximos. Caso um
+vizinho "caia", o sensor deve atualizar sua lista, promovendo o "próximo da
+fila" à posição de vizinho próxmo.
+
+
+Apos eu implementar da forma mais "simples", terei que fazer a correção para que cada um guarde os seus vizinhos, e,
+assim que algum sensor cair ou for adicionado, todos os sensores serao notificados e farão um reescaneamento.
+
+IMPORTANTE*:
+
+ONDE COLOCAR O RECEIVE DO cliente?
+ele tem que receber em loop, mas antes do evento, e o evento nao faz sentido estar em loop
+como fazer? pensar nessa logica
+pensar tambem na logica de finalizar o sensor (a mando do servidor ou do proprio sensor)
+
+
+
+PENDENCIAS <FEAT>:
+    server.c: fazer um servidor mais escalavel, que suporte rodar milhares de clientes
+
+    IMPEDIR QUE UM SENSOR SEJA REGISTRADO NA MESMA POSICAO QUE OUTRO NO GRID
+
+
+PENDENCIAS <CI>:
+
+    LIMPAR O CODIGO server e client de comentarios desnecessários
+
+    Apagar simple client e simple server
+
+
+
+PENDENCIAS <REFACTOR/style>:
+
+    main: clienthread tem que ser readequado pra criar o sensor do jeito que quero
+
+
+
+PENDENCIAS <FIX>:
+
+    main: SE NAO FOR DIGITADA A ULTIMA COORDENADA, O PROGRAMA NAO IDENTIFICA NENHUM ERRO ESPECIFICO,
+AS PARA POR SEGMENTATION FAULT
+
+    main: na criacao da threado do cliente, preciso mesmo de int client_request = ?;
+pra que isso esta servindo?
+
+    sensors.c: SCAN NEIGHBOURS TEM QUE SER ALTERADO. Ele só vai comparar o sensor da mensagem com o vetor de vizinhos.
+Se o sensor q mandou a mensagem for mais perto, ele entra no vetor.
+
+
+
+ONDE COLOCAR O RECEIVE DO cliente?
+ele tem que receber em loop, mas antes do evento, e o evento nao faz sentido estar em loop
+como fazer? pensar nessa logica
+pensar tambem na logica de finalizar o sensor (a mando do servidor ou do proprio sensor)
+
+
+
+
+
+FLUXOGRAMA COMPLETO:
+
+s: SERVIDOR É INICIADO
+c1: CLIENTE É INICIADO COM UM TIPO E UMA COORDENADA
+c1: CHECAGEM SE TODOS OS REQUISITOS DE ARGUMENTOS FORAM CUMPRIDOS
+c1: CRIADO UM SENSOR
+c1: MEASURE É INICIADA ALEATORIAMENTE
+c1: ARRAY DE VIZINHOS É CRIADA
+c1: TIMER DE X SEGUNDOS PARA DISPARAR MENSAGEM É SOLTO
+## em paralelo:
+c2: EVENTO DE AGUARDO POR MENSAGENS É DECLARADO
+##
+c2: CLIENTE É INICIADO COM O MESMO TIPO DE C1 E UMA COORDENADA
+c2: CHECAGEM SE TODOS OS REQUISITOS DE ARGUMENTOS FORAM CUMPRIDOS
+c2: CRIADO UM SENSOR
+c2: MEASURE É INICIADA ALEATORIAMENTE
+c2: ARRAY DE VIZINHOS É CRIADA
+c2: TIMER DE X SEGUNDOS PARA DISPARAR MENSAGEM É SOLTO
+## em paralelo:
+c2: EVENTO DE AGUARDO POR MENSAGENS É DECLARADO
+##
+====== CICLO 1 ======
+c1: TIMER DE ENVIAR MENSAGEM CHEGA AO LIMITE
+c1: MENSAGEM É ENVIADA PARA O SERVIDOR QUE ELE EXISTE E SUA MEDIDA
+s: SERVIDOR PRINTA EM SEU TERMINAL:
+------log:
+------<type> sensor in (<x>,<y>)
+------measurement: <measurement>
+------action: <status>
+------<\n>
+s: SERVIDOR PROCESSA QUAL TIPO DO SENSOR RECEBIDO
+s: CHECA SE JÁ NÃO TEM NENHUM SENSOR NAQUELA COORDENADA (se tiver substitui ou nega, a decidir)
+s: SERVIDOR INSERE ELE NO GRID
+s: INSCREVE O SENSOR NO TOPICO DO SEU TIPO
+s: ENVIA PARA TODOS OS SENSORES DO MESMO TIPO DE C1 
+## em paralelo:
+c1: EVENTO DE MSG ATIVADO! RECEBE A MENSAGEM ENVIADA PELO SERVIDOR
+------log:
+------<type> sensor in (<x>,<y>)
+------measurement: <measurement>
+------action: <status>
+------<\n>
+c1: IGNORA POIS ERA MENSAGEM SOBRE ELE MESMO -> "action = same location"
+c2: EVENTO DE MSG ATIVADO! RECEBE A MENSAGEM ENVIADA PELO SERVIDOR VINDA DO SENSOR C1
+------log:
+------<type> sensor in (<x>,<y>)
+------measurement: <measurement>
+------action: <status>
+------<\n>
+c2: CHECA SE SUA ARRAY DE VIZINHOS JÁ TEM 3 SENSORES
+c2: FAZ A CHEGAGEM SE ESTE SENSOR É UM DOS SEUS 3 VIZINHOS (MAIS PROXIMO QUE OS OUTROS 3 DA ARRAY)
+c2: SE SIM, ATUALIZA SUA MEDIDA e coloca a atualizção no campo "action"
+c2: SE NAO, -> "action = not neighbor"
+===========
+## por tras, o timer de c2 estava rodando
+c2: TIMER DE ENVIAR MENSAGEM CHEGA AO LIMITE
+repete o ciclo 1, mas invertendo o c1 pelo c2
+
+======= EXCLUSAO DE UM SENSOR ========
+SE UM SENSOR c3 SAIR DO GRID ENVIA PARA O SERVIDOR:
+log:
+<type> sensor in (<x>,<y>)
+measurement: -1.0000
+
+s: SERVIDOR RECEBE ESTA MENSAGEM
+s: SERVIDOR ENVIA PARA OS CLIENTES ESTA MENSAGEM
+c1 e c2: leem que o measurement é -1
+c1 e c2: checam se era um de seus vizinhos mais proximos
+c1 e c2: se sim, substitui por um SENSOR VAZIO no array de vizinhos
+
+
