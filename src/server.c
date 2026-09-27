@@ -13,66 +13,88 @@
 #include "utils.c"
 #include "sensors.c"
 
-sem_t x, y;
+#define MAX_SUBSCRIBERS MATRIX_SIZE*MATRIX_SIZE
+
+typedef struct {
+    int sv_socket;
+    SensorType type;
+    int active;
+} Subscriber;
+
+Subscriber subscribers[MAX_SUBSCRIBERS];
+pthread_mutex_t sub_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Adiciona um nó conectado à lista de assinantes
+void add_subscriber(int sv_socket, SensorType type) {
+    pthread_mutex_lock(&sub_mutex);
+    for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
+        if (!subscribers[i].active) {
+            subscribers[i].sv_socket = sv_socket;
+            subscribers[i].type = type;
+            subscribers[i].active = 1;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&sub_mutex);
+}
+
+
+// Remove o nó caso desconecte
+void remove_subscriber(int sv_socket) {
+    pthread_mutex_lock(&sub_mutex);
+    for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
+        if (subscribers[i].active && subscribers[i].sv_socket == sv_socket) {
+            subscribers[i].active = 0;
+            close(sv_socket);
+            break;
+        }
+    }
+    pthread_mutex_unlock(&sub_mutex);
+}
+
+
+// Dispara a mensagem para todos os assinantes do mesmo tipo
+void broadcast(Sensor *s_sub, int sender_sv_socket) {
+    pthread_mutex_lock(&sub_mutex);
+    for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
+        if (subscribers[i].active && 
+            subscribers[i].type == s_sub->type && 
+            subscribers[i].sv_socket != sender_sv_socket) 
+        {
+            send(subscribers[i].sv_socket, s_sub, sizeof(Sensor), 0);
+        }
+    }
+    pthread_mutex_unlock(&sub_mutex);
+}
+
+// Thread dedicada a escutar cada conexão persistente
+void* handle_client(void* arg) {
+    int client_sv_socket = (int)(intptr_t)arg;
+    Sensor s_msg;
+
+    // Primeiro pacote esperado: Registro inicial
+    if (recv(client_sv_socket, &s_msg, sizeof(Sensor), 0) <= 0) {
+        close(client_sv_socket);
+        return NULL;
+    }
+
+    add_subscriber(client_sv_socket, s_msg.type);
+    printf("[Broker] Sensor tipo %d conectado (Socket %d)\n", s_msg.type, client_sv_socket);
+
+    // Loop contínuo: qualquer dado novo que chegar vira broadcast
+    while (recv(client_sv_socket, &s_msg, sizeof(Sensor), 0) > 0) {
+        printf("[Broker] Reenviando leitura (%.2f) do tipo %d para o grupo\n", 
+               s_msg.measurement, s_msg.type);
+        broadcast(&s_msg, client_sv_socket);
+    }
+
+    printf("[Broker] Sensor desconectado (Socket %d)\n", client_sv_socket);
+    remove_subscriber(client_sv_socket);
+    return NULL;
+}
+
+
 int readercount = 0;
-
-// Reader Function
-void* reader(void* param)
-{
-    // Recupera o file descriptor passado diretamente pelo valor do ponteiro
-    int client_sv_socket = (int)(intptr_t)param;
-
-    // Entrada na seção crítica dos leitores
-    sem_wait(&x);
-    readercount++;
-    if (readercount == 1) {
-        sem_wait(&y); // Primeiro leitor bloqueia escritores
-    }
-    sem_post(&x);
-
-    printf("\n[Reader] %d reader(s) inside (Socket %d)", readercount, client_sv_socket);
-
-    // Simulação do trabalho de leitura / comunicação com cliente
-    sleep(2);
-
-    // Saída dos leitores
-    sem_wait(&x);
-    readercount--;
-    if (readercount == 0) {
-        sem_post(&y); // Último leitor libera os escritores
-    }
-    sem_post(&x);
-
-    printf("\n[Reader] Reader leaving (Socket %d)", client_sv_socket);
-
-    // Fecha a conexão exclusiva desta thread
-    close(client_sv_socket);
-    pthread_exit(NULL);
-}
-
-// Writer Function
-void* writer(void* param)
-{
-    int client_sv_socket = (int)(intptr_t)param;
-
-    printf("\n[Writer] Writer trying to enter (Socket %d)", client_sv_socket);
-
-    // Exclusão mútua total para escrita
-    sem_wait(&y);
-
-    printf("\n[Writer] Writer has entered (Socket %d)", client_sv_socket);
-
-    // Simulação do trabalho de escrita / comunicação com cliente
-    sleep(2);
-
-    sem_post(&y);
-
-    printf("\n[Writer] Writer leaving (Socket %d)", client_sv_socket);
-
-    // Fecha a conexão exclusiva desta thread
-    close(client_sv_socket);
-    pthread_exit(NULL);
-}
 
 int main(int argc, char *argv[])
 {
@@ -89,9 +111,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Error: Invalid port number '%s' (range from 1 to 65535).\n", argv[2]);
         return 1;
     }
-
-    sem_init(&x, 0, 1);
-    sem_init(&y, 0, 1);
 
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket < 0) {
@@ -151,9 +170,9 @@ int main(int argc, char *argv[])
         
         // É AQUI QUE FAREMOS A DIFERENCIACAO DO TIPO
         if (msg == 1) {
-            worker = reader;
+            worker = "reader";
         } else if (msg == 2) {
-            worker = writer;
+            worker = "writer";
         } else {
             fprintf(stderr, "Opcao desconhecida (%d) do socket %d\n", msg, newSocket);
             close(newSocket);
