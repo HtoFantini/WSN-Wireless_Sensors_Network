@@ -7,22 +7,14 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <pthread.h>
-#include <semaphore.h>
 
+#include "../include/sensors.h"
+#include "../include/server.h"
 
-#include "utils.c"
-#include "sensors.c"
-
-#define MAX_SUBSCRIBERS MATRIX_SIZE*MATRIX_SIZE
-
-typedef struct {
-    int sv_socket;
-    SensorType type;
-    int active;
-} Subscriber;
 
 Subscriber subscribers[MAX_SUBSCRIBERS];
 pthread_mutex_t sub_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 // Adiciona um nó conectado à lista de assinantes
 void add_subscriber(int sv_socket, SensorType type) {
@@ -58,10 +50,8 @@ void broadcast(Sensor *s_sub, int sender_sv_socket) {
     pthread_mutex_lock(&sub_mutex);
     for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
         if (subscribers[i].active && 
-            subscribers[i].type == s_sub->type && 
-            subscribers[i].sv_socket != sender_sv_socket) 
-        {
-            send(subscribers[i].sv_socket, s_sub, sizeof(Sensor), 0);
+           (subscribers[i].type == StringToSensorType(s_sub->type))){
+                send(subscribers[i].sv_socket, s_sub, sizeof(Sensor), 0);
         }
     }
     pthread_mutex_unlock(&sub_mutex);
@@ -69,32 +59,30 @@ void broadcast(Sensor *s_sub, int sender_sv_socket) {
 
 // Thread dedicada a escutar cada conexão persistente
 void* handle_client(void* arg) {
-    int client_sv_socket = (int)(intptr_t)arg;
+    int client_socket = (int)(intptr_t)arg;
     Sensor s_msg;
 
     // Primeiro pacote esperado: Registro inicial
-    if (recv(client_sv_socket, &s_msg, sizeof(Sensor), 0) <= 0) {
-        close(client_sv_socket);
+    if (recv(client_socket, &s_msg, sizeof(Sensor), 0) <= 0) {
+        close(client_socket);
         return NULL;
     }
 
-    add_subscriber(client_sv_socket, s_msg.type);
-    printf("[Broker] Sensor tipo %d conectado (Socket %d)\n", s_msg.type, client_sv_socket);
+    add_subscriber(client_socket, StringToSensorType(s_msg.type));
+    printf("[Broker] Sensor tipo %s conectado (Socket %d)\n", s_msg.type, client_socket);
 
     // Loop contínuo: qualquer dado novo que chegar vira broadcast
-    while (recv(client_sv_socket, &s_msg, sizeof(Sensor), 0) > 0) {
-        printf("[Broker] Reenviando leitura (%.2f) do tipo %d para o grupo\n", 
+    while (recv(client_socket, &s_msg, sizeof(Sensor), 0) > 0) {
+        printf("[Broker] Reenviando leitura (%.2f) do tipo %s para o grupo\n", 
                s_msg.measurement, s_msg.type);
-        broadcast(&s_msg, client_sv_socket);
+        broadcast(&s_msg, client_socket);
     }
 
-    printf("[Broker] Sensor desconectado (Socket %d)\n", client_sv_socket);
-    remove_subscriber(client_sv_socket);
+    printf("[Broker] Sensor desconectado (Socket %d)\n", client_socket);
+    remove_subscriber(client_socket);
     return NULL;
 }
 
-
-int readercount = 0;
 
 int main(int argc, char *argv[])
 {
@@ -151,42 +139,16 @@ int main(int argc, char *argv[])
         struct sockaddr_storage clientStorage;
         socklen_t addr_size = sizeof(clientStorage);
 
-        int newSocket = accept(serverSocket, (struct sockaddr*)&clientStorage, &addr_size);
-        if (newSocket < 0) {
+        int client_socket = accept(serverSocket, (struct sockaddr*)&clientStorage, &addr_size);
+        if (client_socket < 0) {
             perror("Erro no accept");
             continue;
         }
 
-        // Lê a escolha do cliente (1 = reader, 2 = writer)
-        int msg = 0;
-        ssize_t bytes_recv = recv(newSocket, &msg, sizeof(msg), 0);
-        if (bytes_recv <= 0) {
-            close(newSocket);
-            continue;
-        }
-
         pthread_t tid;
-        void* (*worker)(void*) = NULL;
-        
-        // É AQUI QUE FAREMOS A DIFERENCIACAO DO TIPO
-        if (msg == 1) {
-            worker = "reader";
-        } else if (msg == 2) {
-            worker = "writer";
-        } else {
-            fprintf(stderr, "Opcao desconhecida (%d) do socket %d\n", msg, newSocket);
-            close(newSocket);
-            continue;
-        }
+        pthread_create(&tid, NULL, handle_client, (void*)(intptr_t)client_socket);
+        pthread_detach(tid);
 
-        // Passa o socket diretamente por VALOR encapsulado no ponteiro
-        if (pthread_create(&tid, NULL, worker, (void*)(intptr_t)newSocket) != 0) {
-            perror("Falha ao criar thread");
-            close(newSocket);
-        } else {
-            // Desassocia a thread para limpar recursos da stack automaticamente ao terminar
-            pthread_detach(tid);
-        }
     }
 
     close(serverSocket);
