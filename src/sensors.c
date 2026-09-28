@@ -6,19 +6,39 @@
 #include <time.h>
 #include <stdbool.h>
 
-#include "utils.c"
-
-
-struct SensorMessage {
-    char type[12];
-    int coords[2];
-    float measurement;
-};
-
-typedef struct SensorMessage Sensor;
+#include "../include/sensors.h"
 
 //TODO: tem que ser criada na main
 Sensor sensor_grid[MATRIX_SIZE][MATRIX_SIZE];
+
+
+// ==================== GENERAL PURPOSE FUNCTIONS ===============================
+double clampf(float val, float min, float max){
+    return fmax(min, fmin(val, max));
+}
+
+SensorType StringToSensorType(const char *str){
+    if ((str == "") || (str == NULL)) return SENSOR_UNKNOWN;
+
+    if (strcmp(str, "temperature") == 0) return SENSOR_TEMP;
+    if (strcmp(str, "humidity") == 0)    return SENSOR_HUMIDITY;
+    if (strcmp(str, "air_quality") == 0) return SENSOR_AIR_QUALITY;
+
+    return SENSOR_UNKNOWN;
+}
+
+const char* SensorTypeToString(SensorType type){
+    switch (type) {
+        case SENSOR_TEMP:        return "temperature";
+        case SENSOR_HUMIDITY:    return "humidity";
+        case SENSOR_AIR_QUALITY: return "air_quality";
+        default:                 return "unknown";
+    }
+}
+//==========================================================================
+
+
+//=============================== FUNCTIONAL ===============================
 
 Sensor InitEmptySensor(){
     Sensor s;
@@ -30,15 +50,11 @@ Sensor InitEmptySensor(){
     return s;
 }
 
-float* InitNgbsVec(Sensor neighbours[]){
-    float neighbours_dist[NUM_NEIGHBOURS];
+void InitNgbsVec(Sensor neighbours[]){
     
     for(unsigned i=0;i<NUM_NEIGHBOURS;i++){
-        neighbours_dist[i] = FLT_MAX;
         neighbours[i] = InitEmptySensor();
     }
-    
-    return neighbours_dist;
 }
 
 void RemoveSensorFromGrid(int coords[2],
@@ -85,13 +101,25 @@ void InitSensMeasure(Sensor *s) {
     switch (sensor_type) {
         case SENSOR_TEMP:
             s->measurement = (rand()%21) + 20; //random 20 e 40
+            break;
         case SENSOR_HUMIDITY:
             s->measurement = (rand()%81) + 10; //random 10 e 90
+            break;
         case SENSOR_AIR_QUALITY:
             s->measurement = (rand()%31) + 15; //random 15 e 30
+            break;
         default:
             s->measurement = 0;
+            break;
         }
+}
+
+
+void ConfigSensorVals(Sensor *s, SensorType s_type, int coordX, int coordY){
+    strcpy(s->type, SensorTypeToString(s_type));
+    s->coords[0] = coordX;
+    s->coords[1] = coordY;
+    InitSensMeasure(s);
 }
 
 
