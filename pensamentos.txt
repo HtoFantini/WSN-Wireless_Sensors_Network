@@ -54,12 +54,26 @@ Se o sensor q mandou a mensagem for mais perto, ele entra no vetor.
 
 
 
-ONDE COLOCAR O RECEIVE DO cliente?
-ele tem que receber em loop, mas antes do evento, e o evento nao faz sentido estar em loop
-como fazer? pensar nessa logica
-pensar tambem na logica de finalizar o sensor (a mando do servidor ou do proprio sensor)
+TENHO QUE FAZER A QUESTAO DO GRID E DOS VIZINHOS!
+NO CLIENTE, ELE TEM QUE RECEBER A MSG E CALCULAR SE É VIZINHO DELE OU NÃO
+SE SIM, ADICIONAR AO VETOR DE VIZINHOS
 
 
+PENDENCIA 1: TENHO QUE MONTAR A MENSAGEM DE LOG.
+PENDENCIA 2: TEM QUE FAZER A QUESTAO DO GRID NO SERVIDOR
+PENDENCIA 3: TEM QUE FAZER A QUESTAO DA SAIDA DE UM SENSOR (TANTO NA PARTE DO CLIENTE QUANTO DO SERVIDOR)
+
+-----
+A TROCA DE MENSAGENS ENTRE TIPOS ESTA CORRETA!
+A INICALIZACAO DE VALORES ESTÁ ALEATORIA!
+AS COORDENADAS ESTAO CORRETAS!
+!!PROBLEMA!!!! -> OS VALORES NÃO ESTAO SENDO RECALCULADOS CORRETAMENTE!
+    TEM QUE VER O PQ O CALCULO NAO ESTA CORRETO
+        vizinhos nao estao funcionando corretamente, entao nao se sabe exatamente se o calculo esta funcionando ou nao
+!!PROBLEMA!!!! -> NINGUEM ESTA SENDO CONSIDERADO VIZINHO
+    em MsgReceiveUpdater o is_ngb nunca está sendo retornado True
+    Algo esta errado na funcao CalcNewPossibleNgb em sensors.c que os vizinhos não estão sendo feitos corretamente.
+-----
 
 
 
