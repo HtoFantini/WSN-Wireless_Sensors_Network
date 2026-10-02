@@ -38,7 +38,7 @@ void* SensorThreadCallback(void* arg) {
         pthread_mutex_lock(ctx->lock);
 
         MsgReceiveUpdater(ctx->s_main, &s_incoming, ctx->neighbours);
-        printf("\n[EVENTO] Medição recalculada para:: %.2f\n", ctx->s_main->measurement);
+        printf("\n[EVENTO] Medição recalculada para:: %.2f\n\n\n", ctx->s_main->measurement);
 
         pthread_mutex_unlock(ctx->lock);
     }
