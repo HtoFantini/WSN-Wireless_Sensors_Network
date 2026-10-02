@@ -205,16 +205,36 @@ bool CalcNewPossibleNgb(Sensor s_main,
     bool is_ngb = false;
     
     if(s_candidate.coords[0] == s_main.coords[0] &&
-       s_candidate.coords[1] == s_main.coords[1]) return 0;
+       s_candidate.coords[1] == s_main.coords[1]) {
+        
+        printf("\n[NGB_CALC] Mensagem do próprio sensor. Nada acontece...\n");
+        return 0;
+       }
 
+    
     for(unsigned i=0;i<NUM_NEIGHBOURS;i++){
+        if(s_candidate.coords[0] == neighbours[i].coords[0] &&
+           s_candidate.coords[1] == neighbours[i].coords[1]){
+            printf("[NGB_CALC] Já é vizinho!! Posicao: %i!!\n", i);
+            printf("[NGB_CALC] COORDS CANDIDATO: [%d][%d]\n", s_candidate.coords[0], s_candidate.coords[1]);
+            printf("[NGB_CALC] COORDS VIZINHO[%u]: [%d][%d]\n", i, s_candidate.coords[0], s_candidate.coords[1]);
+
+            is_ngb = true;
+
+            printf("[NGB_CALC] is_ngb: %d\n", is_ngb);
+            return is_ngb; 
+        }
         neighbours_dist[i] = CalcEuclidianDistance(s_main,neighbours[i]);
+        printf("[NGB_CALC] Dist from ngb %u: %f\n", i, neighbours_dist[i]);
     }
        
     dist = CalcEuclidianDistance(s_main,s_candidate);
+    printf("[NGB_CALC] Distancia Euclidiana Calculada: %f\n", dist);
 
     for(unsigned i=0;i<NUM_NEIGHBOURS;i++){
+        printf("[NGB_CALC] ngb_dist[%u]=%.3f\n", i, neighbours_dist[i]);
         if(dist < neighbours_dist[i]){
+            printf("[NGB_CALC] dist < ngb_dist posicao %u\n", i);
             for(unsigned k=NUM_NEIGHBOURS-1;k<i;k--){
                 neighbours_dist[k] = neighbours_dist[k-1];
                 neighbours[k] = neighbours[k-1];
@@ -222,9 +242,11 @@ bool CalcNewPossibleNgb(Sensor s_main,
             neighbours_dist[i] = dist;
             neighbours[i] = s_candidate;
             is_ngb = true;
+            break;
         }
     }
 
+    printf("[NGB_CALC] is_ngb: %d\n", is_ngb);
     return is_ngb;
 }
 
