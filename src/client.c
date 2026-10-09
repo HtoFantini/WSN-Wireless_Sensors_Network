@@ -13,19 +13,25 @@
 #include "../include/client.h"
 
 
-void MsgReceiveUpdater(Sensor *s, Sensor *s_candidate, Sensor neighbours[]){
-    bool is_ngb;
 
-    is_ngb = CalcNewPossibleNgb(*s, *s_candidate, neighbours);
-    if(is_ngb){
-        printf("\n[EVENTO] É vizinho! [%d][%d]!\nMedição Atual:%f\n", s_candidate->coords[0], s_candidate->coords[1], s->measurement);
+void MsgReceiveUpdater(Sensor *s, Sensor *s_candidate, Sensor neighbours[]){
+    MsgAction action;
+    float measure_correction;
+    float initial_measure = s->measurement;
+
+    action = CalcNewPossibleNgb(*s, *s_candidate, neighbours);
+
+    if(action == IS_NGB) {
+        //
+        //printf("\n[EVENTO] É vizinho! [%d][%d]!\nMedição Atual:%f\n", s_candidate->coords[0], s_candidate->coords[1], s->measurement);
         UpdateMeasure(s,neighbours);
     }
-    // TODO: APAGAR ESTE ELSE AQUI! APENAS PARA DEBUG
-    else{
-        printf("\n[EVENTO] O sensor [%d][%d] NÃO é vizinho!\n", s_candidate->coords[0], s_candidate->coords[1]);
-    }
+
+    measure_correction = s->measurement - initial_measure;
+
+    PrintClientLogMsg(*s,*s_candidate,action,measure_correction,0);
 }
+
 
 void* SensorThreadCallback(void* arg) {
     SensorContext *ctx = (SensorContext*)arg;
@@ -33,12 +39,14 @@ void* SensorThreadCallback(void* arg) {
 
     // Fica bloqueado em recv(). Desperta imediatamente quando o Broker manda algo
     while (recv(ctx->client_socket, &s_incoming, sizeof(Sensor), 0) > 0) {
-        printf("\n[EVENTO] Mensagem do sensor: [%d][%d]!\nValor recebido:%f\n", s_incoming.coords[0], s_incoming.coords[1], s_incoming.measurement);
+        // DEBUG
+        //printf("\n[EVENTO] Mensagem do sensor: [%d][%d]!\nValor recebido:%f\n", s_incoming.coords[0], s_incoming.coords[1], s_incoming.measurement);
 
         pthread_mutex_lock(ctx->lock);
 
         MsgReceiveUpdater(ctx->s_main, &s_incoming, ctx->neighbours);
-        printf("\n[EVENTO] Medição recalculada para:: %.2f\n\n\n", ctx->s_main->measurement);
+        // DEBUG
+        //printf("\n[EVENTO] Medição recalculada para:: %.2f\n\n\n", ctx->s_main->measurement);
 
         pthread_mutex_unlock(ctx->lock);
     }
@@ -126,7 +134,8 @@ void* SensorManager(SensorType type, int coordX, int coordY, void* args){
         Sensor s_copy = s_main;
         pthread_mutex_unlock(&data_mutex);
         
-        printf("[Timer Expirado] Publicando leitura: %.2f\n", s_copy.measurement);
+        // DEBUG
+        //printf("[Timer Expirado] Publicando leitura: %.2f\n", s_copy.measurement);
         send(network_socket, &s_copy, sizeof(Sensor), 0);
     }
 
