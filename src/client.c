@@ -29,7 +29,7 @@ void MsgReceiveUpdater(Sensor *s, Sensor *s_candidate, Sensor neighbours[]){
 
     measure_correction = s->measurement - initial_measure;
 
-    PrintClientLogMsg(*s,*s_candidate,action,measure_correction,0);
+    PrintClientLogMsg(*s,*s_candidate,action,measure_correction);
 }
 
 
