@@ -31,7 +31,8 @@ typedef enum {
     NOT_NGB = 0,
     IS_NGB = 1,
     SAME_LOC = 2,
-    REMOVED = 3
+    REMOVED = 3,
+    SERVER = 4
 } MsgAction;
 
 
@@ -51,7 +52,8 @@ float CalcNewMeasure(Sensor s, Sensor neighbours[]);
 MsgAction CalcNewPossibleNgb(Sensor s_main, Sensor s_candidate, Sensor neighbours[NUM_NEIGHBOURS]);
 float CheckMeasureLimits(SensorType type, float measure);
 void UpdateMeasure(Sensor *s, Sensor neighbours[]);
-void PrintClientLogMsg(Sensor s_main, Sensor s_received, MsgAction action_rcv, float measure_correction, int request_type);
+void PrintClientLogMsg(Sensor s_main, Sensor s_received, MsgAction action_rcv, float measure_correction);
+void PrintServerLogMsg(Sensor s_received);
 
 
 #endif // SENSORS_H

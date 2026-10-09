@@ -274,6 +274,7 @@ float CheckMeasureLimits(SensorType type, float measure) {
     }
 }
 
+
 void UpdateMeasure(Sensor *s, Sensor neighbours[]) {
     SensorType sensor_type = StringToSensorType(s->type);
 
@@ -281,14 +282,11 @@ void UpdateMeasure(Sensor *s, Sensor neighbours[]) {
     s->measurement = CheckMeasureLimits(sensor_type,new_measure);
 }
 
-// request_type:
-//      0 -> client
-//      1 -> server
+
 void PrintClientLogMsg(Sensor s_main,
                        Sensor s_received,
                        MsgAction action_rcv,
-                       float measure_correction,
-                       int request_type){
+                       float measure_correction){
 
     char action_print[64];
 
@@ -310,14 +308,14 @@ void PrintClientLogMsg(Sensor s_main,
             break;
     }
 
-    if(request_type == 0){
         printf("\n\nlog:\n%s sensor in (%d,%d)\nmeasurement: %.4f\naction: %s\n\n",
             s_received.type, s_received.coords[0], s_received.coords[1], s_received.measurement, action_print);
-        printf("Sensor (%d,%d)-> real-time measurement: %.4f\n\n", s_main.coords[0], s_main.coords[1], s_main.measurement);
-    }
-    else if(request_type == 1){
+        printf("Sensor (%d,%d)-> real-time measurement: %.4f\n\n",
+            s_main.coords[0], s_main.coords[1], s_main.measurement);
+}
+
+
+void PrintServerLogMsg(Sensor s_received){
         printf("\n\nlog:\n%s sensor in (%d,%d)\nmeasurement: %.4f\n\n",
             s_received.type, s_received.coords[0], s_received.coords[1], s_received.measurement);
-
-    }
 }
