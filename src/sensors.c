@@ -197,57 +197,67 @@ float CalcNewMeasure(Sensor s, Sensor neighbours[]){
 //     }
 // }
 
-bool CalcNewPossibleNgb(Sensor s_main,
+MsgAction CalcNewPossibleNgb(Sensor s_main,
                         Sensor s_candidate,
                         Sensor neighbours[NUM_NEIGHBOURS]) {
     float dist;
     float neighbours_dist[NUM_NEIGHBOURS];
-    bool is_ngb = false;
     
     if(s_candidate.coords[0] == s_main.coords[0] &&
        s_candidate.coords[1] == s_main.coords[1]) {
         
-        printf("\n[NGB_CALC] Mensagem do próprio sensor. Nada acontece...\n");
-        return 0;
+        // DEBUG
+        //printf("\n[NGB_CALC] Mensagem do próprio sensor. Nada acontece...\n");
+        return SAME_LOC;
        }
 
-    
+    // if(SENSOR REMOVIDO){
+    //     printf("[NGB_CALC] Sensor REMOVIDO do Grid!")
+    //     return REMOVED;
+    // }
+
     for(unsigned i=0;i<NUM_NEIGHBOURS;i++){
         if(s_candidate.coords[0] == neighbours[i].coords[0] &&
            s_candidate.coords[1] == neighbours[i].coords[1]){
-            printf("[NGB_CALC] Já é vizinho!! Posicao: %i!!\n", i);
-            printf("[NGB_CALC] COORDS CANDIDATO: [%d][%d]\n", s_candidate.coords[0], s_candidate.coords[1]);
-            printf("[NGB_CALC] COORDS VIZINHO[%u]: [%d][%d]\n", i, s_candidate.coords[0], s_candidate.coords[1]);
+            // DEBUG
+            //printf("[NGB_CALC] Já é vizinho!! Posicao: %i!!\n", i);
+            //printf("[NGB_CALC] COORDS CANDIDATO: [%d][%d]\n", s_candidate.coords[0], s_candidate.coords[1]);
+            //printf("[NGB_CALC] COORDS VIZINHO[%u]: [%d][%d]\n", i, s_candidate.coords[0], s_candidate.coords[1]);
 
-            is_ngb = true;
-
-            printf("[NGB_CALC] is_ngb: %d\n", is_ngb);
-            return is_ngb; 
+            //printf("[NGB_CALC] IS_NGB\n");
+            return IS_NGB; 
         }
         neighbours_dist[i] = CalcEuclidianDistance(s_main,neighbours[i]);
-        printf("[NGB_CALC] Dist from ngb %u: %f\n", i, neighbours_dist[i]);
+        // DEBUG
+        //printf("[NGB_CALC] Dist from ngb %u: %f\n", i, neighbours_dist[i]);
     }
        
     dist = CalcEuclidianDistance(s_main,s_candidate);
-    printf("[NGB_CALC] Distancia Euclidiana Calculada: %f\n", dist);
+    // DEBUG
+    //printf("[NGB_CALC] Distancia Euclidiana Calculada: %f\n", dist);
 
     for(unsigned i=0;i<NUM_NEIGHBOURS;i++){
-        printf("[NGB_CALC] ngb_dist[%u]=%.3f\n", i, neighbours_dist[i]);
+        // DEBUG
+        //printf("[NGB_CALC] ngb_dist[%u]=%.3f\n", i, neighbours_dist[i]);
         if(dist < neighbours_dist[i]){
-            printf("[NGB_CALC] dist < ngb_dist posicao %u\n", i);
+            // DEBUG
+            //printf("[NGB_CALC] dist < ngb_dist posicao %u\n", i);
             for(unsigned k=NUM_NEIGHBOURS-1;k<i;k--){
                 neighbours_dist[k] = neighbours_dist[k-1];
                 neighbours[k] = neighbours[k-1];
             }
             neighbours_dist[i] = dist;
             neighbours[i] = s_candidate;
-            is_ngb = true;
-            break;
+            
+            // DEBUG
+            //printf("[NGB_CALC] IS_NGB\n");
+            return IS_NGB;
         }
     }
 
-    printf("[NGB_CALC] is_ngb: %d\n", is_ngb);
-    return is_ngb;
+    // DEBUG
+    //printf("[NGB_CALC] NOT_NGB\n");
+    return NOT_NGB;
 }
 
 
@@ -271,4 +281,43 @@ void UpdateMeasure(Sensor *s, Sensor neighbours[]) {
     s->measurement = CheckMeasureLimits(sensor_type,new_measure);
 }
 
+// request_type:
+//      0 -> client
+//      1 -> server
+void PrintClientLogMsg(Sensor s_main,
+                       Sensor s_received,
+                       MsgAction action_rcv,
+                       float measure_correction,
+                       int request_type){
 
+    char action_print[64];
+
+    switch (action_rcv){
+        case NOT_NGB:
+            strcpy(action_print, "not neighbour");
+            break;    
+        case IS_NGB:
+            snprintf(action_print, sizeof(action_print), "correction of %.4f", measure_correction);
+            break; 
+        case SAME_LOC:
+            strcpy(action_print, "same location");    
+            break;
+        case REMOVED:
+            strcpy(action_print, "removed");  
+            break;  
+        default:
+            strcpy(action_print, "unknown action");
+            break;
+    }
+
+    if(request_type == 0){
+        printf("\n\nlog:\n%s sensor in (%d,%d)\nmeasurement: %.4f\naction: %s\n\n",
+            s_received.type, s_received.coords[0], s_received.coords[1], s_received.measurement, action_print);
+        printf("Sensor (%d,%d)-> real-time measurement: %.4f\n\n", s_main.coords[0], s_main.coords[1], s_main.measurement);
+    }
+    else if(request_type == 1){
+        printf("\n\nlog:\n%s sensor in (%d,%d)\nmeasurement: %.4f\n\n",
+            s_received.type, s_received.coords[0], s_received.coords[1], s_received.measurement);
+
+    }
+}

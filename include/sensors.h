@@ -27,6 +27,13 @@ typedef enum {
 } SensorType;
 
 
+typedef enum {
+    NOT_NGB = 0,
+    IS_NGB = 1,
+    SAME_LOC = 2,
+    REMOVED = 3
+} MsgAction;
+
 
 SensorType StringToSensorType(const char *str);
 const char* SensorTypeToString(SensorType type);
@@ -41,9 +48,10 @@ void InitSensMeasure(Sensor *s);
 void ConfigSensorVals(Sensor *s, SensorType s_type, int coordX, int coordY);
 float CalcEuclidianDistance(Sensor s1, Sensor s2);
 float CalcNewMeasure(Sensor s, Sensor neighbours[]);
-bool CalcNewPossibleNgb(Sensor s_main, Sensor s_candidate, Sensor neighbours[NUM_NEIGHBOURS]);
+MsgAction CalcNewPossibleNgb(Sensor s_main, Sensor s_candidate, Sensor neighbours[NUM_NEIGHBOURS]);
 float CheckMeasureLimits(SensorType type, float measure);
 void UpdateMeasure(Sensor *s, Sensor neighbours[]);
+void PrintClientLogMsg(Sensor s_main, Sensor s_received, MsgAction action_rcv, float measure_correction, int request_type);
 
 
 #endif // SENSORS_H
