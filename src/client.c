@@ -22,7 +22,7 @@ void MsgReceiveUpdater(Sensor *s, Sensor *s_candidate, Sensor neighbours[]){
     action = CalcNewPossibleNgb(*s, *s_candidate, neighbours);
 
     if(action == IS_NGB) {
-        //
+        // DEBUG
         //printf("\n[EVENTO] É vizinho! [%d][%d]!\nMedição Atual:%f\n", s_candidate->coords[0], s_candidate->coords[1], s->measurement);
         UpdateMeasure(s,neighbours);
     }
