@@ -315,7 +315,24 @@ void PrintClientLogMsg(Sensor s_main,
 }
 
 
-void PrintServerLogMsg(Sensor s_received){
+void PrintServerLogMsg(Sensor s_received, ServerMsgType msg_type){
+
+    switch (msg_type)
+    {
+    case NEW_CONECTION:
+        printf("\nSensor connected!\nType: %s\nCoords: (%d,%d)\n\n",
+            s_received.type, s_received.coords[0],s_received.coords[1]);
+        break;
+    case MSG_RECEIVED:
         printf("\n\nlog:\n%s sensor in (%d,%d)\nmeasurement: %.4f\n\n",
             s_received.type, s_received.coords[0], s_received.coords[1], s_received.measurement);
+        break;
+    case SENSOR_REMOVED:
+        printf("\nSensor (%d, %d)-> %s: desconected from grid\n\n",
+        s_received.coords[0], s_received.coords[1], s_received.type);
+        break;    
+    default:
+        printf("\n\nlog:\nUnknown type of message\n\n");
+        break;
+    }
 }

@@ -35,6 +35,12 @@ typedef enum {
     SERVER = 4
 } MsgAction;
 
+typedef enum {
+    NEW_CONECTION = 0,
+    MSG_RECEIVED = 1,
+    SENSOR_REMOVED = 2
+} ServerMsgType;
+
 
 SensorType StringToSensorType(const char *str);
 const char* SensorTypeToString(SensorType type);
@@ -53,7 +59,7 @@ MsgAction CalcNewPossibleNgb(Sensor s_main, Sensor s_candidate, Sensor neighbour
 float CheckMeasureLimits(SensorType type, float measure);
 void UpdateMeasure(Sensor *s, Sensor neighbours[]);
 void PrintClientLogMsg(Sensor s_main, Sensor s_received, MsgAction action_rcv, float measure_correction);
-void PrintServerLogMsg(Sensor s_received);
+void PrintServerLogMsg(Sensor s_received, ServerMsgType msg_type);
 
 
 #endif // SENSORS_H
