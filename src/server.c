@@ -69,16 +69,18 @@ void* handle_client(void* arg) {
     }
 
     add_subscriber(client_socket, StringToSensorType(s_msg.type));
-    printf("[Broker] Sensor tipo %s conectado (Socket %d)\n", s_msg.type, client_socket);
+    PrintServerLogMsg(s_msg, NEW_CONECTION);
 
     // Loop contínuo: qualquer dado novo que chegar vira broadcast
     while (recv(client_socket, &s_msg, sizeof(Sensor), 0) > 0) {
-        printf("[Broker] Reenviando leitura (%.2f) do tipo %s para o grupo\n", 
-               s_msg.measurement, s_msg.type);
+        // DEBUG
+        //printf("[Broker] Reenviando leitura (%.2f) do tipo %s para o grupo\n", s_msg.measurement, s_msg.type);
+        PrintServerLogMsg(s_msg, MSG_RECEIVED);
+        
         broadcast(&s_msg, client_socket);
     }
 
-    printf("[Broker] Sensor desconectado (Socket %d)\n", client_socket);
+    PrintServerLogMsg(s_msg, SENSOR_REMOVED);
     remove_subscriber(client_socket);
     return NULL;
 }
